@@ -1,1 +1,5 @@
+<<<<<<< HEAD
 # cockpit
+=======
+cockpit
+>>>>>>> master

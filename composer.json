@@ -1,0 +1,9 @@
+{
+  "name": "adt/cockpit",
+  "type": "library",
+  "autoload": {
+    "psr-4": {
+      "ADT\\": "src/"
+    }
+  }
+}

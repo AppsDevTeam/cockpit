@@ -46,10 +46,9 @@ class Cockpit
 	 */
 	public function getEntries(string $collection, array $filters = [], array $sorts = []): array
 	{
-		$_entries = $this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts))['entries'];
+		$entries = $this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts))['entries'];
 
-		$entries = [];
-		foreach ($_entries as &$entry) {
+		foreach ($entries as &$entry) {
 			$entry = $this->replaceCollectionLinks($entry);
 		}
 		

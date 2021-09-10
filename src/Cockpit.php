@@ -46,9 +46,10 @@ class Cockpit
 	 */
 	public function getEntries(string $collection, array $filters = [], array $sorts = []): array
 	{
-		$entries = $this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts))['entries'];
+		$_entries = $this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts))['entries'];
 
-		foreach ($entries as &$entry) {
+		$entries = [];
+		foreach ($_entries as &$entry) {
 			$entry = $this->replaceCollectionLinks($entry);
 		}
 		
@@ -87,7 +88,7 @@ class Cockpit
 				'|collection://[0-9A-z/]+|',
 				function($matches) {
 					[$collection, $id] = explode('/', str_replace('collection://', '', $matches[0]));
-					return $this->getEntry($collection, ['_id' => $id])['siteName'];
+					return $this->getEntry($collection, ['_id' => $id])['slug'];
 				},
 				$value
 			);

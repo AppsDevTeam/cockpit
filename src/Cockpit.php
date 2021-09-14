@@ -68,6 +68,16 @@ class Cockpit
 	}
 
 	/**
+	 * @param string $singleton
+	 * @return array
+	 * @throws GuzzleException
+	 */
+	public function getSingleton(string $singleton): array
+	{
+		return $this->get($this->apiUrl . '/singletons/get/' .  $singleton);
+	}
+
+	/**
 	 * @param array $entry
 	 * @return array
 	 * @throws GuzzleException

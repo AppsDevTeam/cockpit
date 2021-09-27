@@ -8,6 +8,11 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class Cockpit
 {
+	const SIZE_SMALL = 'small';
+	const SIZE_THUMBS = 'thumbs';
+	const SIZE_HEADER_IMG = 'headerimage';
+	const SIZE_FULL = 'full';
+
 	protected string $apiUrl;
 	protected string $apiToken;
 
@@ -75,6 +80,22 @@ class Cockpit
 	public function getSingleton(string $singleton): array
 	{
 		return $this->get($this->apiUrl . '/singletons/get/' .  $singleton);
+	}
+
+	public static function getThumbnailPath(string $size, array $entry): string
+	{
+		if (in_array($size, [
+			self::SIZE_SMALL, self::SIZE_THUMBS, self::SIZE_HEADER_IMG, self::SIZE_FULL
+		])) {
+			if (isset($entry['sizes'])) {
+				// asset
+				return $entry['sizes'][$size]['path'];
+			} else {
+				// gallery, image
+				preg_match("/[^\/]+$/", $entry['path'], $matches);
+				return "/" . $size . "/" . $matches[0];
+			}
+		}
 	}
 
 	/**

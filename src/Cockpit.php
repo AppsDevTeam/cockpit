@@ -77,6 +77,12 @@ class Cockpit
 		return $this->get($this->apiUrl . '/singletons/get/' .  $singleton);
 	}
 
+	/**
+	 * @param string $size
+	 * @param array $entry
+	 * @return string
+	 * @throws \Exception
+	 */
 	public static function getThumbnailPath(string $size, array $entry): string
 	{
 		if (isset($entry['sizes'])) { // asset
@@ -87,7 +93,11 @@ class Cockpit
 			}
 		} else { // gallery, image
 			preg_match("/[^\/]+$/", $entry['path'], $matches);
-			return "/" . $size . "/" . $matches[0];
+			if (file_exists(__DIR__ ."/../../../../www/storage/uploads/" . $size . "/")) {
+				return "/" . $size . "/" . $matches[0];
+			} else {
+				throw new \Exception($size . " neexistuje");
+			}
 		}
 	}
 

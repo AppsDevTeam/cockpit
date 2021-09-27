@@ -83,20 +83,20 @@ class Cockpit
 	 * @return string
 	 * @throws \Exception
 	 */
-	public static function getThumbnailPath(string $size, array $entry): string
+	public static function getThumbnailPath(array $entry, string $size): string
 	{
 		if (isset($entry['sizes'])) { // asset
 			if (isset($entry['sizes'][$size])) {
 				return $entry['sizes'][$size]['path'];
 			} else {
-				throw new \Exception($size . " neexistuje");
+				throw new \Exception("Size " . $size . " does not exist!");
 			}
 		} else { // gallery, image
 			preg_match("/[^\/]+$/", $entry['path'], $matches);
-			if (file_exists(__DIR__ ."/../../../../www/storage/uploads/" . $size . "/")) {
+			if (file_exists("/uploads/" . $size . "/")) {
 				return "/" . $size . "/" . $matches[0];
 			} else {
-				throw new \Exception($size . " neexistuje");
+				throw new \Exception("Size " . $size . " does not exist!");
 			}
 		}
 	}

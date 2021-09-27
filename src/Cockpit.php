@@ -87,17 +87,13 @@ class Cockpit
 	{
 		if (isset($entry['sizes'])) { // asset
 			if (isset($entry['sizes'][$size])) {
-				return $entry['sizes'][$size]['path'];
+				return "/uploads" . $entry['sizes'][$size]['path'];
 			} else {
 				throw new \Exception("Size " . $size . " does not exist!");
 			}
 		} else { // gallery, image
 			preg_match("/[^\/]+$/", $entry['path'], $matches);
-			if (file_exists("/uploads/" . $size . "/")) {
-				return "/" . $size . "/" . $matches[0];
-			} else {
-				throw new \Exception("Size " . $size . " does not exist!");
-			}
+			return "/uploads/" . $size . "/" . $matches[0];
 		}
 	}
 

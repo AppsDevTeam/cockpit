@@ -85,16 +85,10 @@ class Cockpit
 	 */
 	public static function getThumbnailPath(array $entry, string $size): string
 	{
-		if (isset($entry['sizes'])) { // asset
-			if (isset($entry['sizes'][$size])) {
-				return "/uploads" . $entry['sizes'][$size]['path'];
-			} else {
-				throw new \Exception("Size " . $size . " does not exist!");
-			}
-		} else { // gallery, image
-			preg_match("/[^\/]+$/", $entry['path'], $matches);
-			return "/uploads/" . $size . "/" . $matches[0];
+		if (isset($entry['sizes'][$size])) {
+			return 'uploads' . $entry['sizes'][$size]['path'];
 		}
+		return 'uploads/' . $size . '/' . array_reverse(explode('/', $entry['path']))[0];
 	}
 
 	/**

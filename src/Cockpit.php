@@ -8,6 +8,8 @@ use GuzzleHttp\Exception\GuzzleException;
 
 class Cockpit
 {
+	const UPLOADS_DIR = "/storage/uploads";
+	
 	protected string $apiUrl;
 	protected string $apiToken;
 
@@ -75,6 +77,19 @@ class Cockpit
 	public function getSingleton(string $singleton): array
 	{
 		return $this->get($this->apiUrl . '/singletons/get/' .  $singleton);
+	}
+
+	public static function getAssetPath(array $entry, ?string $size = null): string
+	{
+		if (is_null($size)) {
+			return static::UPLOADS_DIR . '/' . ltrim($entry['path'], static::UPLOADS_DIR);
+		}
+
+		if (isset($entry['sizes'][$size])) {
+			return static::UPLOADS_DIR . $entry['sizes'][$size]['path'];
+		}
+
+		return static::UPLOADS_DIR . '/' . $size . '/' . array_reverse(explode('/', $entry['path']))[0];
 	}
 
 	/**

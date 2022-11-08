@@ -28,18 +28,6 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 		$this->onGetOffset = $onGetOffset;
 	}
 
-	public function setOnLoad(array $callbacks): self
-	{
-		$this->onLoad = $callbacks;
-		return $this;
-	}
-
-	public function setOnGetOffset(array $callbacks): self
-	{
-		$this->onGetOffset = $callbacks;
-		return $this;
-	}
-
 	public function getIterator(): RecursiveArrayIterator
 	{
 		return new RecursiveArrayIterator($this->values);

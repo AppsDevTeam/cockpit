@@ -25,6 +25,16 @@ class Cockpit
 		$this->host = $host ?: preg_replace('(^https?://)', '', rtrim($url, '/'));
 	}
 
+	public function setOnLoadEntry(array $callbacks): void
+	{
+		$this->onLoadEntry = $callbacks;
+	}
+
+	public function setOnGetEntryOffset(array $callbacks): void
+	{
+		$this->onGetEntryOffset = $callbacks;
+	}
+
 	/**
 	 * @param string $url
 	 * @param array $data

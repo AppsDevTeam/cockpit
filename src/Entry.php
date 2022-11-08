@@ -55,7 +55,7 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 		$this->values[$offset] = $value;
 	}
 
-	public function offsetGet($offset)
+	public function offsetGet($offset): mixed
 	{
 		foreach ($this->onLoad as $_callback)
 		{

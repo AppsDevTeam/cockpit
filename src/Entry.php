@@ -13,12 +13,19 @@ use RecursiveArrayIterator;
 final class Entry implements ArrayAccess, Countable, IteratorAggregate
 {
 	private array $values;
-	private array $onLoad = [];
-	private array $onGetOffset = [];
+	private array $onLoad;
+	private array $onGetOffset;
 
-	public function __construct(array $values)
+	public function __construct(array $values, $onLoad, $onGetOffset)
 	{
+		foreach ($values as $key => &$value) {
+			if (is_array($value)) {
+				$value = new Entry($value, $onLoad, $onGetOffset);
+			}
+		}
 		$this->values = $values;
+		$this->onLoad = $onLoad;
+		$this->onGetOffset = $onGetOffset;
 	}
 
 	public function setOnLoad(array $callbacks): self

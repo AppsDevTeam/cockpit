@@ -25,16 +25,6 @@ class Cockpit
 		$this->host = $host ?: preg_replace('(^https?://)', '', rtrim($url, '/'));
 	}
 
-	public function setOnLoadEntry(array $callbacks): void
-	{
-		$this->onLoadEntry = $callbacks;
-	}
-
-	public function setOnGetEntryOffset(array $callbacks): void
-	{
-		$this->onGetEntryOffset = $callbacks;
-	}
-
 	/**
 	 * @param string $url
 	 * @param array $data
@@ -67,7 +57,7 @@ class Cockpit
 	{
 		$entries = [];
 		foreach ($this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts))['entries'] as $_entry) {
-			$entries[] = (new Entry($_entry))->setOnLoad($this->onLoadEntry)->setOnGetOffset($this->onGetEntryOffset);
+			$entries[] = new Entry($_entry, $this->onLoadEntry, $this->onGetEntryOffset);
 		}
 
 		return $entries;

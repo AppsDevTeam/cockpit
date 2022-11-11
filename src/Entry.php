@@ -15,14 +15,16 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 	private array $values;
 	private array $onLoad;
 	private array $onGetOffset;
+	private bool $isInit = false;
 
 	public function __construct(array $values, $onLoad, $onGetOffset)
 	{
-		foreach ($values as $key => &$value) {
+		foreach ($values as &$value) {
 			if (is_array($value)) {
-				$value = new Entry($value, $onLoad, $onGetOffset);
+				$this->unsetEmptyCollectionEntries($value);
 			}
 		}
+
 		$this->values = $values;
 		$this->onLoad = $onLoad;
 		$this->onGetOffset = $onGetOffset;
@@ -52,11 +54,15 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 
 	public function offsetGet($offset): mixed
 	{
-		foreach ($this->onLoad as $_callback)
-		{
-			$_callback($this->values);
+		if (!$this->isInit) {
+			foreach ($this->onLoad as $_callback)
+			{
+				$_callback($this->values);
+			}
+			$this->toEntry();
+			$this->isInit = true;
 		}
-		$this->onLoad = [];
+
 
 		foreach ($this->onGetOffset as $_callback) {
 			$_callback($this->values, $offset);
@@ -73,5 +79,50 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 	public function offsetUnset($offset): void
 	{
 		unset($this->values[$offset]);
+	}
+
+	public function toArray(): array
+	{
+		return $this->values;
+	}
+
+	private function toEntry()
+	{
+		foreach ($this->values as $key => &$value) {
+			if (is_array($value)) {
+				$value = new Entry($value, $this->onLoad, $this->onGetOffset);
+			}
+		}
+	}
+
+	private function unsetEmptyCollectionEntries(array &$collection)
+	{
+		// not a collection, but an entry
+		if (count(array_filter(array_keys($collection), 'is_string')) > 0) {
+			return;
+		}
+
+		foreach ($collection as $index => &$_entry)
+		{
+			// not a collection, but a list
+			if (!is_array($_entry)) {
+				break;
+			}
+
+			$unset = true;
+			foreach ($_entry as $key => $value) {
+				if (is_array($value)) {
+					$this->unsetEmptyCollectionEntries($value);
+				} else {
+					if (!str_starts_with($key, '_')) {
+						$unset = false;
+					}
+				}
+			}
+			if ($unset) {
+				unset($collection[$index]);
+			}
+		}
+
 	}
 }

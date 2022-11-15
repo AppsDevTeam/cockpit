@@ -89,17 +89,17 @@ class Cockpit
 		return $this->get($this->apiUrl . '/singletons/get/' .  $singleton);
 	}
 
-	public static function getAssetPath(array $entry, ?string $size = null): string
+	public static function getAssetPath(array $file, ?string $size = null): string
 	{
 		if (is_null($size)) {
-			return static::UPLOADS_DIR . '/' . ltrim($entry['path'], static::UPLOADS_DIR);
+			return static::UPLOADS_DIR . '/' . ltrim($file['path'], static::UPLOADS_DIR);
 		}
 
-		if (isset($entry['sizes'][$size])) {
-			return static::UPLOADS_DIR . $entry['sizes'][$size]['path'];
+		if (isset($file['sizes'][$size])) {
+			return static::UPLOADS_DIR . $file['sizes'][$size]['path'];
 		}
 
-		return static::UPLOADS_DIR . '/' . $size . '/' . array_reverse(explode('/', $entry['path']))[0];
+		return static::UPLOADS_DIR . '/' . $size . '/' . array_reverse(explode('/', $file['path']))[0];
 	}
 
 	private function getData(array $filters, array $sorts): array

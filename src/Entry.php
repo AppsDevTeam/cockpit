@@ -90,6 +90,11 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 	{
 		foreach ($this->values as $key => &$value) {
 			if (is_array($value)) {
+				// skip if file
+				if (isset($value['path']) && isset($value['mime'])) {
+					continue;
+				}
+
 				$value = new Entry($value, $this->onLoad, $this->onGetOffset);
 			}
 		}

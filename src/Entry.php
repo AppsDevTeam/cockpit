@@ -88,7 +88,7 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 
 	private function toEntry()
 	{
-		foreach ($this->values as $key => &$value) {
+		foreach ($this->values as &$value) {
 			if (is_array($value)) {
 				// skip if file
 				if (isset($value['path']) && isset($value['mime'])) {
@@ -115,19 +115,23 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 			}
 
 			$unset = true;
-			foreach ($_entry as $key => $value) {
+			foreach ($_entry as $key => &$value) {
 				if (is_array($value)) {
 					$this->unsetEmptyCollectionEntries($value);
-				} else {
-					if (!str_starts_with($key, '_')) {
-						$unset = false;
+
+					if (empty($value)) {
+						unset($_entry[$key]);
+						continue;
 					}
+				}
+
+				if (!str_starts_with($key, '_')) {
+					$unset = false;
 				}
 			}
 			if ($unset) {
 				unset($collection[$index]);
 			}
 		}
-
 	}
 }

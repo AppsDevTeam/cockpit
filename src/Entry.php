@@ -55,10 +55,10 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 	public function offsetGet($offset): mixed
 	{
 		if (!$this->isInit) {
-			foreach ($this->onLoad as $_callback)
-			{
+			foreach ($this->onLoad as $_callback) {
 				$_callback($this->values);
 			}
+
 			$this->toEntry($this->values);
 
 			$this->isInit = true;

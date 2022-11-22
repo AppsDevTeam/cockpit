@@ -59,10 +59,10 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 			{
 				$_callback($this->values);
 			}
-			$this->toEntry();
+			$this->toEntry($this->values);
+
 			$this->isInit = true;
 		}
-
 
 		foreach ($this->onGetOffset as $_callback) {
 			$_callback($this->values, $offset);
@@ -86,15 +86,21 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 		return $this->values;
 	}
 
-	private function toEntry()
+	private function toEntry(&$values)
 	{
-		foreach ($this->values as &$value) {
+		foreach ($values as &$value) {
 			if (is_array($value)) {
 				// skip if file
 				if (isset($value['path']) && isset($value['mime'])) {
 					continue;
 				}
 
+				// collection
+				if (count(array_filter(array_keys($value), 'is_string')) === 0) {
+					$this->toEntry($value);
+				}
+
+				// entry
 				$value = new Entry($value, $this->onLoad, $this->onGetOffset);
 			}
 		}

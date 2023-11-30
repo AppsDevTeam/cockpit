@@ -63,10 +63,10 @@ class Cockpit
 	 * @return array
 	 * @throws GuzzleException
 	 */
-	public function getEntries(string $collection, array $filters = [], array $sorts = []): array
+	public function getEntries(string $collection, array $filters = [], array $sorts = [], int $limit = -1): array
 	{
 		$entries = [];
-		foreach ($this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts))['entries'] as $_entry) {
+		foreach ($this->get($this->apiUrl . '/collections/get/' .  $collection, $this->getData($filters, $sorts, $limit))['entries'] as $_entry) {
 			$entries[] = new Entry($_entry, $this->onLoadEntry, $this->onGetEntryOffset);
 		}
 
@@ -102,11 +102,12 @@ class Cockpit
 		return static::UPLOADS_DIR . '/' . $size . '/' . array_reverse(explode('/', $file['path']))[0];
 	}
 
-	private function getData(array $filters, array $sorts): array
+	private function getData(array $filters, array $sorts, int $limit = -1): array
 	{
 		return [
 			'filter' => $filters,
 			'sort' => $sorts,
+			'limit' => $limit,
 			'populate' => 1
 		];
 	}

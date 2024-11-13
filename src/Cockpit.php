@@ -89,8 +89,12 @@ class Cockpit
 		return $this->get($this->apiUrl . '/singletons/get/' .  $singleton);
 	}
 
-	public static function getAssetPath(array $file, ?string $size = null): string
+	public static function getAssetPath(array|Entry $file, ?string $size = null): string
 	{
+		if ($file instanceof Entry) {
+			$file = $file->toArray();
+		}
+
 		if (is_null($size)) {
 			return static::UPLOADS_DIR . '/' . ltrim($file['path'], static::UPLOADS_DIR);
 		}

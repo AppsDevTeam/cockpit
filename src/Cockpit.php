@@ -110,6 +110,7 @@ class Cockpit
 	 * @param array $data
 	 * @return array
 	 * @throws GuzzleException
+	 * @throws \JsonException
 	 */
 	private function get(string $url, array $data = []): array
 	{
@@ -122,7 +123,7 @@ class Cockpit
 			'body' => json_encode($data),
 		]);
 
-		return json_decode($response->getBody()->getContents(), true);
+		return json_decode($response->getBody()->getContents(), true, 512, JSON_THROW_ON_ERROR);
 	}
 
 	/**
@@ -147,7 +148,7 @@ class Cockpit
 	 */
 	public function getEntry(string $collection, array $filters = [], array $sorts = []): ?Entry
 	{
-		return $this->getEntries($collection, $filters, $sorts)[0] ?? null;
+		return $this->getEntries($collection, $filters, $sorts, 1)[0] ?? null;
 	}
 
 	/**
@@ -165,11 +166,16 @@ class Cockpit
 		}
 
 		if (is_null($size)) {
-			return static::UPLOADS_DIR . '/' . ltrim($file['path'], static::UPLOADS_DIR);
+			$path = $file['path'];
+			if (str_starts_with($path, static::UPLOADS_DIR)) {
+				$path = substr($path, strlen(static::UPLOADS_DIR));
+			}
+
+			return static::UPLOADS_DIR . '/' . ltrim($path, '/');
 		}
 
 		if (isset($file['sizes'][$size])) {
-			return static::UPLOADS_DIR . $file['sizes'][$size]['path'];
+			return static::UPLOADS_DIR . '/' . ltrim($file['sizes'][$size]['path'], '/');
 		}
 
 		return static::UPLOADS_DIR . '/' . $size . '/' . array_reverse(explode('/', $file['path']))[0];

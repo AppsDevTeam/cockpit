@@ -6,7 +6,7 @@ namespace ADT\Cockpit;
 
 use ArrayAccess;
 use Countable;
-use Exception;
+use InvalidArgumentException;
 use IteratorAggregate;
 use RecursiveArrayIterator;
 
@@ -32,21 +32,25 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 
 	public function getIterator(): RecursiveArrayIterator
 	{
+		$this->init();
+
 		return new RecursiveArrayIterator($this->values);
 	}
 
 	public function count(): int
 	{
+		$this->init();
+
 		return count($this->values);
 	}
 
 	/**
-	 * @throws Exception
+	 * @throws InvalidArgumentException
 	 */
 	public function offsetSet($offset, $value): void
 	{
 		if (!is_scalar($offset)) { // prevents null
-			throw new Exception(sprintf('Key must be either a string or an integer, %s given.', gettype($offset)));
+			throw new InvalidArgumentException(sprintf('Key must be either a string or an integer, %s given.', gettype($offset)));
 		}
 
 		$this->values[$offset] = $value;
@@ -54,25 +58,19 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 
 	public function offsetGet($offset): mixed
 	{
-		if (!$this->isInit) {
-			foreach ($this->onLoad as $_callback) {
-				$_callback($this->values);
-			}
-
-			$this->toEntry($this->values);
-
-			$this->isInit = true;
-		}
+		$this->init();
 
 		foreach ($this->onGetOffset as $_callback) {
 			$_callback($this->values, $offset);
 		}
 
-		return $this->values[$offset];
+		return $this->values[$offset] ?? null;
 	}
 
 	public function offsetExists($offset): bool
 	{
+		$this->init();
+
 		return isset($this->values[$offset]);
 	}
 
@@ -83,7 +81,35 @@ final class Entry implements ArrayAccess, Countable, IteratorAggregate
 
 	public function toArray(): array
 	{
-		return $this->values;
+		return $this->valuesToArray($this->values);
+	}
+
+	private function init(): void
+	{
+		if ($this->isInit) {
+			return;
+		}
+
+		foreach ($this->onLoad as $_callback) {
+			$_callback($this->values);
+		}
+
+		$this->toEntry($this->values);
+
+		$this->isInit = true;
+	}
+
+	private function valuesToArray(array $values): array
+	{
+		foreach ($values as &$value) {
+			if ($value instanceof self) {
+				$value = $value->toArray();
+			} elseif (is_array($value)) {
+				$value = $this->valuesToArray($value);
+			}
+		}
+
+		return $values;
 	}
 
 	private function toEntry(&$values)

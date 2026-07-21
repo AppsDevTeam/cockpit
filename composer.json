@@ -1,6 +1,8 @@
 {
   "name": "adt/cockpit",
+  "description": "PHP client for the Cockpit CMS content API",
   "type": "library",
+  "license": "MIT",
   "autoload": {
     "psr-4": {
       "ADT\\Cockpit\\": "src/"

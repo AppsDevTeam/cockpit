@@ -1,14 +1,26 @@
 {
-  "name": "adt/cockpit",
-  "type": "library",
-  "autoload": {
-    "psr-4": {
-      "ADT\\Cockpit\\": "src/"
-    }
-  },
-  "require": {
-    "php": ">=8.0",
-    "ext-json": "*",
-    "guzzlehttp/guzzle": "^7.0"
-  }
+	"name": "adt/cockpit",
+	"description": "Client of the Cockpit CMS v2 REST API with retries and a fallback to the last successful response",
+	"type": "library",
+	"license": "MIT",
+	"autoload": {
+		"psr-4": {
+			"ADT\\Cockpit\\": "src/"
+		}
+	},
+	"require": {
+		"php": ">=8.3",
+		"ext-json": "*",
+		"guzzlehttp/guzzle": "^7.4"
+	},
+	"require-dev": {
+		"nette/caching": "^3.2",
+		"nette/tester": "^2.5"
+	},
+	"suggest": {
+		"nette/caching": "for Client::setFallbackStorage()"
+	},
+	"scripts": {
+		"test": "tester tests/ -C"
+	}
 }

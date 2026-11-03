@@ -79,6 +79,11 @@ class Cockpit
 	/** @var array<string, mixed> responses of GET requests sent during this request/run */
 	private array $memory = [];
 
+	/** Time of the last failure, see getFailedAt(). */
+	private ?int $failedAt = null;
+
+	private bool $failedAtLoaded = false;
+
 
 	public function __construct(?string $url = null, ?string $apiKey = null, ?string $host = null)
 	{
@@ -100,6 +105,8 @@ class Cockpit
 		$this->host = $host !== null && $host !== '' ? $host : null;
 		$this->http = null;
 		$this->memory = [];
+		$this->failedAt = null;
+		$this->failedAtLoaded = false;
 	}
 
 
@@ -130,9 +137,12 @@ class Cockpit
 
 	/**
 	 * Keeps the last successful response of every read. It is returned only when Cockpit fails
-	 * (UnavailableException), never instead of a successful response. After a failure Cockpit
-	 * is not called for $failureHold seconds, so that a stalled Cockpit does not hold every
-	 * PHP worker for the whole timeout.
+	 * (UnavailableException), never instead of a successful response.
+	 *
+	 * After a failure no read goes to this Cockpit for $failureHold seconds (counted from the end of the
+	 * failed request): reads return the stored data, or throw immediately. Without the storage this holds
+	 * only within one request, with it across requests - so that a stalled Cockpit does not hold every
+	 * PHP worker for the whole timeout of every read.
 	 */
 	public function setFallbackStorage(Storage $storage, int $failureHold = 30): void
 	{
@@ -297,18 +307,10 @@ class Cockpit
 	 */
 	public function getSingleton(string $model, ?string $locale = null, ?int $populate = null): array
 	{
-		try {
-			$result = $this->get('content/item/' . rawurlencode($model), [
-				'populate' => ($populate ?? $this->populate) ?: null,
-				'locale' => $locale ?? $this->locale,
-			]);
-		} catch (RequestException $e) {
-			if ($e->getStatusCode() === 404) {
-				return [];
-			}
-
-			throw $e;
-		}
+		$result = $this->get('content/item/' . rawurlencode($model), [
+			'populate' => ($populate ?? $this->populate) ?: null,
+			'locale' => $locale ?? $this->locale,
+		], notFoundIsNull: true);
 
 		return is_array($result) ? self::removeUnresolvedLinks($result) : [];
 	}
@@ -393,12 +395,13 @@ class Cockpit
 
 	/**
 	 * @param array<string, mixed> $query arrays are sent as JSON, null values are skipped
+	 * @param bool $notFoundIsNull HTTP 404 is an expected answer (missing singleton), not an error
 	 * @throws UnavailableException
 	 * @throws RequestException
 	 */
-	private function get(string $path, array $query): mixed
+	private function get(string $path, array $query, bool $notFoundIsNull = false): mixed
 	{
-		return $this->request('GET', $path, ['query' => self::encodeQuery($query)]);
+		return $this->request('GET', $path, ['query' => self::encodeQuery($query)], $notFoundIsNull);
 	}
 
 
@@ -407,7 +410,7 @@ class Cockpit
 	 * @throws UnavailableException
 	 * @throws RequestException
 	 */
-	private function request(string $method, string $path, array $options): mixed
+	private function request(string $method, string $path, array $options, bool $notFoundIsNull = false): mixed
 	{
 		$url = $this->apiUrl . $path;
 
@@ -429,14 +432,16 @@ class Cockpit
 
 		$cached = $this->fallbackCache?->load($key);
 		$hasFallback = is_array($cached) && array_key_exists('data', $cached);
-		$now = time();
 
-		if (is_array($cached) && ($cached['failedAt'] ?? 0) + $this->failureHold > $now) {
+		// After a failure no read goes to this Cockpit for $failureHold seconds - not only the same query:
+		// a page with several reads would otherwise wait for each of them during an outage.
+		$failedAt = $this->getFailedAt();
+		if ($failedAt !== null && $failedAt + $this->failureHold > time()) {
 			if ($hasFallback) {
 				return $this->memory[$key] = $cached['data'];
 			}
 
-			throw new UnavailableException(sprintf('Cockpit failed %d s ago, not called again yet: %s', $now - $cached['failedAt'], $url));
+			throw new UnavailableException(sprintf('Cockpit failed %d s ago, not called again yet: %s', time() - $failedAt, $url));
 		}
 
 		try {
@@ -444,7 +449,8 @@ class Cockpit
 
 		} catch (UnavailableException $e) {
 			$this->reportError($e, $url, $hasFallback);
-			$this->fallbackCache?->save($key, ($hasFallback ? ['data' => $cached['data']] : []) + ['failedAt' => $now]);
+			// the time AFTER the failed request: a slow failure (timeout) would otherwise eat up the hold
+			$this->setFailedAt(time());
 
 			if ($hasFallback) {
 				return $this->memory[$key] = $cached['data'];
@@ -453,16 +459,57 @@ class Cockpit
 			throw $e;
 
 		} catch (RequestException $e) {
-			$this->reportError($e, $url, false);
-			throw $e;
+			if (!$notFoundIsNull || $e->getStatusCode() !== 404) {
+				$this->reportError($e, $url, false);
+				throw $e;
+			}
+
+			$data = null;
+		}
+
+		if ($failedAt !== null) {
+			$this->setFailedAt(null);
 		}
 
 		// unchanged data is not written again, a page view should not mean a disk write
-		if (!$hasFallback || isset($cached['failedAt']) || $cached['data'] !== $data) {
+		if (!$hasFallback || $cached['data'] !== $data) {
 			$this->fallbackCache?->save($key, ['data' => $data]);
 		}
 
 		return $this->memory[$key] = $data;
+	}
+
+
+	/**
+	 * Time of the last failure of this Cockpit (API URL, host and key): kept in the instance, so that the
+	 * other reads of the same request do not wait for it, and in the fallback storage for other requests.
+	 */
+	private function getFailedAt(): ?int
+	{
+		if (!$this->failedAtLoaded && $this->fallbackCache !== null) {
+			$failedAt = $this->fallbackCache->load($this->getFailureKey());
+			$this->failedAt = is_int($failedAt) ? $failedAt : null;
+		}
+		$this->failedAtLoaded = true;
+
+		return $this->failedAt;
+	}
+
+
+	private function setFailedAt(?int $failedAt): void
+	{
+		$this->failedAt = $failedAt;
+		if ($failedAt === null) {
+			$this->fallbackCache?->remove($this->getFailureKey());
+		} else {
+			$this->fallbackCache?->save($this->getFailureKey(), $failedAt);
+		}
+	}
+
+
+	private function getFailureKey(): string
+	{
+		return 'failed.' . md5(implode("\n", [$this->host, $this->apiUrl, md5($this->apiKey)]));
 	}
 
 

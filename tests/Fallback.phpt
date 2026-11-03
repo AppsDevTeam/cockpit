@@ -164,3 +164,53 @@ test('unchanged data is not written again, writes do not touch the storage', fun
 	$mock->createCockpit(fallbackStorage: $storage)->saveEntry('Applicant', ['name' => 'Jan']);
 	Assert::same(2, $storage->writes);
 });
+
+
+test('after a failure the other reads of the same request do not call Cockpit, even without storage', function () {
+	$mock = new CockpitMock(json([], 503), json([], 503));
+	$cockpit = $mock->createCockpit();
+
+	Assert::exception(fn() => $cockpit->getEntries('Article'), UnavailableException::class, 'Cockpit responded 503: %a%');
+	Assert::exception(fn() => $cockpit->getEntries('Tag'), UnavailableException::class, 'Cockpit failed %d% s ago, not called again yet: %a%');
+	Assert::exception(fn() => $cockpit->getSingleton('Footer'), UnavailableException::class, 'Cockpit failed %d% s ago, not called again yet: %a%');
+	Assert::count(2, $mock->requests);
+});
+
+
+test('during the hold no read of other requests calls Cockpit, each gets its own last data', function () {
+	$mock = new CockpitMock(json([['_id' => 'a']]), json([['_id' => 't']]), json([], 503), json([], 503));
+	$storage = new MemoryStorage;
+
+	$first = $mock->createCockpit(fallbackStorage: $storage);
+	$first->getEntries('Article');
+	$first->getEntries('Tag');
+
+	$second = $mock->createCockpit(fallbackStorage: $storage);
+	Assert::same([['_id' => 'a']], arrays($second->getEntries('Article')));   // 503, 503 → own fallback
+	Assert::same([['_id' => 't']], arrays($second->getEntries('Tag')));       // held, own fallback
+
+	$third = $mock->createCockpit(fallbackStorage: $storage);
+	Assert::same([['_id' => 't']], arrays($third->getEntries('Tag')));
+	Assert::count(4, $mock->requests);
+});
+
+
+test('the hold counts from the end of a slow failure', function () {
+	$mock = new CockpitMock(function () {
+		sleep(2);
+
+		return json([], 503);
+	});
+	$storage = new MemoryStorage;
+	$cockpit = $mock->createCockpit(fallbackStorage: $storage, failureHold: 1);
+	$cockpit->setHttpOptions(0, 1.0, 5.0, 0);
+
+	Assert::exception(fn() => $cockpit->getEntries('Article'), UnavailableException::class, 'Cockpit responded 503: %a%');
+	// counted from the start of the request, the 1 s hold would be over after the 2 s request
+	Assert::exception(
+		fn() => $mock->createCockpit(fallbackStorage: $storage, failureHold: 1)->getEntries('Article'),
+		UnavailableException::class,
+		'Cockpit failed %d% s ago, not called again yet: %a%',
+	);
+	Assert::count(1, $mock->requests);
+});

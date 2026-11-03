@@ -17,7 +17,7 @@ Version 1.x is the client of Cockpit v1 (`/api/collections/get`), it lives on th
 composer require adt/cockpit ^2.0
 ```
 
-PHP >= 8.3, `guzzlehttp/guzzle ^7.4`; `nette/caching` for the fallback storage.
+PHP >= 8.3, `guzzlehttp/guzzle ^7.4`; `nette/caching` for the fallback storage, `tracy/tracy` for `TracyLogger`.
 
 ## Configuration (Nette DI)
 
@@ -28,8 +28,12 @@ services:
 		setup:
 			- setParameters(%cockpit.url%, %cockpit.apiKey%, %cockpit.host%)
 			- setFallbackStorage(@Nette\Caching\Storage)
-			- setOnError([[@App\Model\CockpitLogger, log]])
+			- setOnError([ADT\Cockpit\TracyLogger()])
 ```
+
+`TracyLogger` logs HTTP 4xx (wrong key, missing permission, unknown model) as an exception, so it is e-mailed
+in production mode; unavailability goes as one line into `log/cockpit.log`, without e-mail. A missing singleton
+(404) is an expected answer, it is not reported.
 
 A second Cockpit (e.g. careers from cockpit.akesoholding.cz) is a second service of the same class.
 
@@ -38,7 +42,7 @@ A second Cockpit (e.g. careers from cockpit.akesoholding.cz) is a second service
 | `setParameters($url, $apiKey, $host = null)` | | `$url` with or without `/api`. `$host` = `Host` header when the API is called through an internal address (`http://nginx`). |
 | `setHttpOptions($maxRetries, $connectTimeout, $timeout, $retryBaseDelayMs)` | `1, 2.0, 5.0, 250` | Worst case of one read without fallback: (1 + retries) × timeout + delays = 10.25 s. Raise for CLI jobs only. |
 | `setUploadTimeout($seconds)` | `300` | Timeout of `upload()`. |
-| `setFallbackStorage(Storage $storage, $failureHold = 30)` | off | Keeps the last successful response of each read. Used only on `UnavailableException`; after a failure Cockpit is not called for `$failureHold` seconds (the stored data is returned, or the exception is thrown immediately). |
+| `setFallbackStorage(Storage $storage, $failureHold = 30)` | off | Keeps the last successful response of each read. Used only on `UnavailableException`. After a failure no read goes to this Cockpit for `$failureHold` seconds, counted from the end of the failed request: every read returns its stored data, or throws immediately. Without the storage the hold applies within one request only. |
 | `setOnError([callable])` | | `callback(Throwable $e, string $url, bool $servedFromFallback)` on every failed request. The library does not log. |
 | `setPopulate($depth)` | `1` | Default depth of populated links; `0` keeps links as `{_id, _model}`. |
 | `setLocale($locale)` | `null` | Default locale of reads. |

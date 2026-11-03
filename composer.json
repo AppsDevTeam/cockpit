@@ -15,10 +15,12 @@
 	},
 	"require-dev": {
 		"nette/caching": "^3.2",
-		"nette/tester": "^2.5"
+		"nette/tester": "^2.5",
+		"tracy/tracy": "^2.10"
 	},
 	"suggest": {
-		"nette/caching": "for Client::setFallbackStorage()"
+		"nette/caching": "for Cockpit::setFallbackStorage()",
+		"tracy/tracy": "for TracyLogger (Cockpit::setOnError())"
 	},
 	"scripts": {
 		"test": "tester tests/ -C"

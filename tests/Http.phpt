@@ -190,3 +190,16 @@ test('upload sends the file as files[] to the project endpoint', function () {
 	Assert::contains('Content-Type: application/pdf', $body);
 	Assert::contains('%PDF-1.4', $body);
 });
+
+
+test('a missing singleton is not reported as an error', function () {
+	$mock = new CockpitMock(json(['error' => 'Not found'], 404));
+	$cockpit = $mock->createCockpit();
+	$errors = 0;
+	$cockpit->setOnError([function () use (&$errors) {
+		$errors++;
+	}]);
+
+	Assert::same([], $cockpit->getSingleton('Missing'));
+	Assert::same(0, $errors);
+});
